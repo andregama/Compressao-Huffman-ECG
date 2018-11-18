@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 # coding: utf-8
 
-import heapq
-import os
-import sys
+import heapq, os, sys
+from bitstring import BitArray
 
 class HeapNo:
 	def __init__(self, char, freq):
@@ -79,6 +78,15 @@ class Huffman:
 			texto_cod += self.codigos[char]
 		return texto_cod
 
+	def add_dict_codigos(self, texto_cod):
+		texto=""
+		for key in self.codigos:
+			texto+=BitArray(key.encode()).bin
+			texto+=BitArray(u"\u2980".encode()).bin
+			texto+=self.codigos[key]
+			texto+=BitArray(u"\u2980".encode()).bin
+		texto_cod = texto + texto_cod
+		return texto_cod
 
 	def preenche_texto_cod(self, texto_cod): #preenche o texto com zeros pra ser multiplo de 8 e guarda os bits preenchidos no comeco do texto
 		preenchimento = 8 - len(texto_cod) % 8
@@ -95,10 +103,10 @@ class Huffman:
 			print("Texto não devidamente codificado")
 			exit(0)
 
-		b = bytearray()
+		b=bytearray()
 		for i in range(0, len(texto_cod_preenchido), 8):
 			byte = texto_cod_preenchido[i:i+8]
-			b.append(int(byte, 2)) #transforma os bits em um numero inteiro e adiciona na bytearray
+			b+=int(byte, 2).to_bytes(1,sys.byteorder) #transforma os bits em um numero inteiro e adiciona na bytearray
 		return b
 
 
@@ -106,7 +114,7 @@ class Huffman:
 		nome_arquivo, ext_arquivo = os.path.splitext(self.path)
 		arquivo_saida = nome_arquivo + ".bin"
 
-		with open(self.path, 'r+') as arquivo, open(arquivo_saida, 'wb') as saida:
+		with open(nome_arquivo+ext_arquivo, 'r+') as arquivo, open(arquivo_saida, 'wb') as saida:
 			texto = arquivo.read()
 			texto = texto.rstrip() #tira os caracteres em branco no final do texto
 
@@ -116,12 +124,14 @@ class Huffman:
 			self.criar_codigos()
 
 			texto_cod = self.get_texto_codificado(texto)
+			texto_cod = self.add_dict_codigos(texto_cod)
 			texto_cod_preenchido = self.preenche_texto_cod(texto_cod)
 
 			b = self.get_byte_array(texto_cod_preenchido)
 			saida.write(bytes(b))
 
-		print("Compressão finalizada")
+		print("Compressão finalizada com sucesso!")
+
 		return arquivo_saida
 
 
@@ -135,6 +145,17 @@ class Huffman:
 		texto_cod = texto_cod_preenchido[:-1*preenchimento]  #exclui os bits de preenchimento no final do texto
 
 		return texto_cod
+
+	def construir_dict_codigos(self, texto_cod):
+		byte=""
+		tam=0
+		chars = texto_cod.split("111000101010011010000000") #cria uma lista com os caracteres dividos por este numero binario que funciona como separador
+		chars.pop() #remove o ultimo elemento da lista
+		for i in range(0, len(chars), 2):
+			tam+=(len(chars[i])+len(chars[i+1])+48)
+			self.mapReverso[chars[i+1]]=BitArray('0b' + chars[i]).tobytes().decode()
+		texto_cod = texto_cod[tam:] #remove os caracteres usados para construir o dicionario
+		return  texto_cod
 
 	def decodificar_texto(self, texto_cod):
 		noAtual = ""
@@ -150,33 +171,32 @@ class Huffman:
 		return texto_decod
 
 
-	def descomprimir(self, input_path):
+	def descomprimir(self):
 		nome_arquivo, ext_arquivo = os.path.splitext(self.path)
 		arquivo_saida = nome_arquivo + "_descomprimido" + ".txt"
+		arquivo_entrada = nome_arquivo+ ext_arquivo
 
-		with open(input_path, 'rb') as arquivo, open(arquivo_saida, 'w') as saida:
+		with open(arquivo_entrada, 'rb') as arquivo, open(arquivo_saida, 'w') as saida:
 			bit_string = ""
 
             #abaixo os bytes sao convertidos em uma string de bits
 			byte = arquivo.read(1) #le o primeiro byte do arquivo
 			while byte:
-				num=int.from_bytes(byte,sys.byteorder)
-				bits="{0:b}".format(num).rjust(8, '0')
-				#byte = ord(byte) #retorna o codigo Unicode para o byte
-				#bits = bin(byte)[2:].rjust(8, '0') #converte o codigo para binario e preenche com zeros na esquerda até completar 8 bits
+				num=int.from_bytes(byte,sys.byteorder) #transforma o byte em um numero inteiro
+				bits="{0:b}".format(num).rjust(8, '0') #converte o codigo para binario e preenche com zeros na esquerda até completar 8 bits
 				bit_string += bits #guarda os bits em bit_string
 				byte = arquivo.read(1)
 
 			texto_cod = self.remove_preenchimento(bit_string)
-
+			texto_cod = self.construir_dict_codigos(texto_cod)
 			descomprimido_texto = self.decodificar_texto(texto_cod)
 
 			saida.write(descomprimido_texto)
 
-		print("Descomprimido")
+		print("Descompressão finalizada com sucesso!")
 		return arquivo_saida
 
 
-a=Huffman('C:/Users/andre/Desktop/ReadMeh.txt')
-a.comprimir()
-a.descomprimir('C:/Users/andre/Desktop/ReadMeh.bin')
+a=Huffman('C:/Users/andre/Desktop/ReadMeh.bin')
+#a.comprimir()
+a.descomprimir()
