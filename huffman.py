@@ -16,7 +16,7 @@ class HeapNo:
 			return -1
 		if(not isinstance(other, HeapNo)):
 			return -1
-		return self.freq > other.freq
+		return self.freq < other.freq
 
 
 class Huffman:
@@ -120,11 +120,9 @@ class Huffman:
 			texto = texto.rstrip() #tira os caracteres em branco no final do texto
 
 			freq = self.make_freq_dict(texto)
-			#print(freq.values())
 			self.make_heap(freq)
 			self.merge_nos()
 			self.criar_codigos()
-			#print(self.codigos.values())
 
 			texto_cod = self.get_texto_codificado(texto)
 			texto_cod = self.add_dict_codigos(texto_cod)
@@ -197,8 +195,8 @@ class Huffman:
 		return arquivo_saida
 
 
-a=Huffman('C:/Users/andre/Desktop/amostra/inter.bin')
-#a=Huffman('C:/Users/andre/Desktop/ReadMeh.txt')
+a=Huffman('C:/Users/andre/Desktop/amostra/inter.txt')
+#a=Huffman('C:/Users/andre/Desktop/ReadMeh.bin')
 
-#a.comprimir()
-a.descomprimir()
+a.comprimir()
+#a.descomprimir()
